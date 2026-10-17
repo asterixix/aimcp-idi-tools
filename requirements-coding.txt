@@ -1,0 +1,4 @@
+# Python 3.14 (study: 3.14.4)
+anthropic==1.14.0
+requests==2.34.2
+pydantic==2.14.1

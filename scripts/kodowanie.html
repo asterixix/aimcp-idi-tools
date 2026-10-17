@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kodowanie IDI</title>
+<style>
+  :root { color-scheme: light; --tlo: #f6f5f2; --karta: #fff; --tekst: #1d1d1b; --szary: #6b6b66; --czeka: #c98a00;
+          --przyjety: #2f7d32; --zmieniony: #1f5fa8; --odrzucony: #9a9a94; --autor: #7a3fa0; --mark: #ffe58a; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--tlo); color: var(--tekst); font: 16px/1.55 system-ui, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: #fff; border-bottom: 1px solid #ddd; padding: 8px 16px; }
+  .wiersz { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; max-width: 1280px; margin: 0 auto; }
+  header select { font: inherit; padding: 3px 6px; }
+  #licz { color: var(--szary); font-size: 14px; }
+  main { max-width: 1280px; margin: 0 auto; padding: 16px 16px 300px; }
+  .tura { margin: 0 0 12px; padding: 10px 14px; border-radius: 6px; }
+  .tura.b { background: #ebeae5; color: #44443f; font-size: 15px; }
+  .tura.r { background: var(--karta); border: 1px solid #e2e1dc; }
+  .tura.wyl { opacity: .55; }
+  .nag { font-size: 13px; color: var(--szary); margin-bottom: 4px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .reak { color: var(--autor); font-weight: 600; }
+  .tekst { white-space: pre-wrap; }
+  .tura.r .tekst { cursor: text; }
+  mark { background: var(--mark); padding: 0; }
+  .kolumny { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px; }
+  .kolumny.jedna { grid-template-columns: 1fr; }
+  @media (max-width: 900px) { .kolumny { grid-template-columns: 1fr; } }
+  .model { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--szary); margin-top: 4px; }
+  .pusto { font-size: 13px; color: var(--szary); font-style: italic; }
+  .karta { margin: 5px 0 0; padding: 6px 10px; border-left: 4px solid var(--czeka); background: #fbfaf7; border-radius: 4px; font-size: 15px; cursor: pointer; }
+  .karta.przyjety { border-color: var(--przyjety); }
+  .karta.zmieniony { border-color: var(--zmieniony); }
+  .karta.odrzucony { border-color: var(--odrzucony); color: var(--szary); }
+  .karta.odrzucony b { text-decoration: line-through; }
+  .karta.czeka { background: #fff8e6; }
+  .karta.autor { border-color: var(--autor); }
+  .karta.akt { outline: 2px solid #333; }
+  .karta.pokrywa { outline: 2px dashed #8a8a84; }
+  .st { font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--szary); }
+  .poj { font-size: 12px; background: #eee; padding: 0 5px; border-radius: 3px; }
+  .ost { color: #a33; font-size: 12px; }
+  .mal { font-size: 13px; color: var(--szary); }
+  .memo-a { font-size: 13px; color: #3d3d39; white-space: pre-wrap; border-left: 2px solid #ccc; padding-left: 6px; margin-top: 2px; }
+  body.tylko .karta.zdecyd { display: none; }
+  body.dow .tura:not(.dowod):not(.kontekst) { display: none; }
+  .tura.dowod { border: 2px solid var(--czeka); }
+  .dowod-znak { color: var(--czeka); font-weight: 600; }
+  aside { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; padding: 8px 16px 10px; z-index: 6; box-shadow: 0 -2px 8px rgba(0,0,0,.08); }
+  #dok { border-top: 2px solid #333; }
+  #panel { border-top: 2px solid var(--autor); }
+  aside textarea, aside input { font: inherit; font-size: 15px; padding: 4px 8px; }
+  #d-memo { width: 100%; resize: vertical; min-height: 2.6em; }
+  #d-opis { flex: 1 1 100%; font-size: 14px; }
+  #d-pokrywa { flex: 1 1 100%; }
+  aside button { font: inherit; font-size: 14px; padding: 3px 10px; cursor: pointer; }
+  aside .glowny { font-weight: 600; }
+  #d-nowykod { flex: 1 1 240px; }
+  #p-cyt { flex-basis: 100%; font-size: 14px; max-height: 4.6em; overflow: auto; }
+  #p-kod, #p-memo { flex: 1 1 240px; }
+  .zapis { font-size: 13px; color: var(--przyjety); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wiersz">
+    <label>Transkrypt <select id="transkrypt"></select></label>
+    <label>Etap <select id="etap"><option>otwarte</option><option>zogniskowane</option></select></label>
+    <label><input type="checkbox" id="tylko"> tylko do weryfikacji</label>
+    <label title="Tury, na których opiera się artykuł do JAL (kodowanie/dowody-JAL.json), z pytaniem badacza"><input type="checkbox" id="dow"> tylko dowody JAL</label>
+    <span id="licz"></span>
+  </div>
+</header>
+<main id="tury"></main>
+<datalist id="kody"></datalist>
+
+<aside id="dok" hidden>
+  <div class="wiersz">
+    <div id="d-opis"></div>
+    <div id="d-pokrywa" class="mal"></div>
+    <textarea id="d-memo" rows="2" aria-label="memo autora"
+      placeholder="memo autora (m): Enter = przyjmij z memo, Shift+Enter = nowa linia, Ctrl+S = zapisz samo memo, Esc = wyjście z pola"></textarea>
+    <div class="wiersz" id="d-edycja" hidden style="flex:1 1 100%; margin:0">
+      <input id="d-nowykod" list="kody" aria-label="nowy kod">
+      <button id="d-zapisz" class="glowny">Zapisz zmianę (Enter)</button><button id="d-anuluj">Anuluj (Esc)</button>
+      <span id="d-nowycyt" class="mal" style="flex:1 1 100%">Cytat bez zmian; nowy: zaznacz fragment w tej turze.</span>
+    </div>
+    <div class="wiersz" style="flex:1 1 100%; margin:0">
+      <button data-a="k" title="Poprzednia karta">◀ k</button>
+      <span class="llm"><button data-a="p" class="glowny">Przyjmij (p)</button> <button data-a="o">Odrzuć (o)</button> <button data-a="z">Zmień (z)</button></span>
+      <button data-a="s">Memo (s)</button>
+      <button data-a="u" class="autor-tylko">Usuń kod autora</button>
+      <button data-a="j" title="Następna karta">j ▶</button>
+      <button data-a="n">Do weryfikacji (n)</button>
+      <span id="d-zapis" class="zapis"></span>
+    </div>
+  </div>
+</aside>
+
+<aside id="panel" hidden>
+  <div class="wiersz">
+    <div id="p-cyt"></div>
+    <input id="p-kod" list="kody" placeholder="kod (rzeczownik odczasownikowy albo in vivo)">
+    <input id="p-memo" placeholder="memo (opcjonalnie)">
+    <button id="p-dodaj" class="glowny">Dodaj kod (Enter)</button><button id="p-anuluj">Anuluj (Esc)</button>
+  </div>
+</aside>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const KLASA = {"przyjęty": "przyjety", "zmieniony": "zmieniony", "odrzucony": "odrzucony"};
+const S = {idi: null, etap: "otwarte", d: null, aktywna: null, podsw: null, zazn: null, edycja: false, nowyCyt: null, lista: []};
+const klucz = k => k.etap + ":" + k.id;  // te same id w kodowaniu otwartym i kontrolnym
+const autorska = k => k.decyzja == "dodany przez autora" || k.decyzja == "usunięty przez autora";
+const sel = kl => document.querySelector(`.karta[data-klucz="${CSS.escape(kl)}"]`);
+
+async function api(url, body) {
+  const r = await fetch(url, body ? {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)} : {});
+  const j = await r.json();
+  if (!r.ok) { alert(j.blad || ("Błąd " + r.status)); throw new Error(j.blad); }
+  return j;
+}
+
+// --- dane i rysowanie (raz na wywiad) ---
+async function lista() {
+  const j = await api("/api/lista?etap=" + encodeURIComponent(S.etap));
+  S.lista = j.transkrypty;
+  $("#kody").innerHTML = j.kody.map(k => `<option value="${esc(k)}">`).join("");
+  if (!S.idi || !j.transkrypty.some(t => t.transkrypt == S.idi))
+    S.idi = (j.transkrypty.find(t => t.czeka) || j.transkrypty[0] || {}).transkrypt;
+  opcje();
+}
+
+function opcje() {
+  $("#transkrypt").innerHTML = S.lista.map(t =>
+    `<option value="${t.transkrypt}">${t.transkrypt}: do weryfikacji ${t.czeka}/${t.propozycje}, własne ${t.autora}`
+    + (t.dowody ? `, dowody JAL zweryfikowane ${t.dowody_ok}/${t.dowody}` : "") + `</option>`).join("");
+  $("#transkrypt").value = S.idi || "";
+}
+
+async function laduj() {
+  if (!S.idi) { $("#tury").innerHTML = "<p>Brak plików kodowania dla tego etapu.</p>"; return; }
+  const d = await api(`/api/${S.idi}?etap=${encodeURIComponent(S.etap)}`);
+  d.kody.forEach(k => k.etap = d.etap);
+  d.kody_autora.forEach(k => k.etap = d.etap);
+  if (d.kontrolne) d.kontrolne.kody.forEach(k => k.etap = "kontrolne");
+  S.d = d;
+  S.podsw = S.aktywna = null;
+  S.edycja = false;
+  rysuj();
+}
+
+function grupuj(lista) {
+  const g = {};
+  for (const k of lista) (g[k.tura] ||= []).push(k);
+  return g;
+}
+
+function wszystkieKody() { return S.d.kody.concat(S.d.kody_autora, S.d.kontrolne ? S.d.kontrolne.kody : []); }
+function znajdz(kl) { return wszystkieKody().find(x => klucz(x) == kl); }
+
+function rysuj() {
+  const d = S.d, main = $("#tury"), kk = d.kontrolne;
+  const kody = grupuj(d.kody), autora = grupuj(d.kody_autora.filter(k => k.decyzja == "dodany przez autora"));
+  const kontr = grupuj(kk ? kk.kody : []);
+  const reak = Object.fromEntries(d.reakcje.map(r => [r.tura, r]));
+  const dow = new Set(d.dowody || []);
+  const frag = document.createDocumentFragment();
+  for (const [i, t] of d.tury.entries()) {
+    const sec = document.createElement("section");
+    const kontekst = t.mowca == "B" && dow.has(d.tury[i + 1]?.id);  // pytanie badacza przed turą dowodową
+    sec.className = "tura " + (t.mowca == "B" ? "b" : "r") + (t.wylaczona ? " wyl" : "")
+      + (dow.has(t.id) ? " dowod" : "") + (kontekst ? " kontekst" : "");
+    sec.id = "t-" + t.id;
+    sec.innerHTML = `<div class="nag"><span>${t.id}, ${t.start} - ${t.koniec}</span><span>${t.mowca == "B" ? "Badacz" : "Rozmówca"}</span>`
+      + (dow.has(t.id) ? `<span class="dowod-znak">dowód JAL</span>` : "")
+      + (t.wylaczona ? "<span>wyłączona z kodowania (tabela wyłączeń)</span>" : "")
+      + (reak[t.id] ? `<span class="reak">reakcja na pojęcie badacza: ${esc(reak[t.id].wartosc)}</span>` : "")
+      + `</div><div class="tekst" data-tura="${t.id}"></div>`;
+    sec.querySelector(".tekst").textContent = t.tekst;
+    if (t.mowca == "R" && !t.wylaczona) {
+      const kol = document.createElement("div");
+      kol.className = "kolumny" + (kk ? "" : " jedna");
+      const lewa = kolumna(`${d.model} (kodowanie ${d.etap})`, (kody[t.id] || []).concat(autora[t.id] || []));
+      lewa.classList.add("lewa");
+      kol.append(lewa);
+      if (kk) kol.append(kolumna(`${kk.model} (kodowanie kontrolne)`, kontr[t.id] || []));
+      sec.append(kol);
+    }
+    frag.append(sec);
+  }
+  main.replaceChildren(frag);
+  liczniki();
+}
+
+function kolumna(tytul, lista) {
+  const div = document.createElement("div");
+  div.innerHTML = `<div class="model">${esc(tytul)}</div>` + (lista.length ? "" : `<div class="pusto">brak kodów</div>`);
+  for (const k of lista) div.append(karta(k));
+  return div;
+}
+
+function karta(k) {
+  const c = document.createElement("div");
+  const kod = autorska(k) || k.decyzja == "zmieniony" ? k.kod : k.kod_llm;
+  const zdecyd = autorska(k) || k.weryfikacja;
+  c.className = "karta " + (autorska(k) ? "autor" : (KLASA[k.decyzja] || "")) + (zdecyd ? " zdecyd" : " czeka");
+  c.dataset.klucz = klucz(k);
+  const stan = autorska(k) ? "dodany przez autora" : (k.decyzja || "bez decyzji") + (k.zrodlo_decyzji ? ` (${k.zrodlo_decyzji})` : "")
+    + (k.weryfikacja ? ", zweryfikowany" : ", do weryfikacji");
+  c.innerHTML = `<div><b>${esc(kod)}</b> ${autorska(k) ? "" : `<span class="poj">${esc(k.pojecie)}</span>`} <span class="st">${esc(stan)}</span></div>`
+    + (k.decyzja == "zmieniony" && k.kod != k.kod_llm ? `<div class="mal">propozycja LLM: ${esc(k.kod_llm)}</div>` : "")
+    + `<div class="cyt">„${esc(k.cytat)}”${k.cytat_status && k.cytat_status != "dokładny" ? ` <span class="ost">cytat: ${esc(k.cytat_status)}</span>` : ""}</div>`
+    + (k.memo_llm ? `<div class="mal">memo LLM: ${esc(k.memo_llm)}</div>` : "")
+    + (k.memo_autora ? `<div class="memo-a">${esc(k.memo_autora)}</div>` : "");
+  c.addEventListener("click", () => aktywuj(klucz(k)));
+  return c;
+}
+
+function liczniki() {
+  const d = S.d, kk = d.kontrolne, autora = d.kody_autora.filter(k => k.decyzja == "dodany przez autora").length;
+  const opis = (nazwa, lista) => {
+    const ile = s => lista.filter(k => k.decyzja == s).length;
+    return `${nazwa}: zweryfikowane ${lista.filter(k => k.weryfikacja).length}/${lista.length} `
+      + `(przyjęte ${ile("przyjęty")}, zmienione ${ile("zmieniony")}, odrzucone ${ile("odrzucony")})`;
+  };
+  $("#licz").textContent = `${d.transkrypt}. ${opis(d.model, d.kody)}` + (kk ? `; ${opis(kk.model, kk.kody)}` : "") + `; własne ${autora}.`;
+  const llm = d.kody.concat(kk ? kk.kody : []), w = S.lista.find(t => t.transkrypt == d.transkrypt);
+  const dow = new Set(d.dowody || []), kd = llm.filter(k => dow.has(k.tura) && (k.decyzja == "przyjęty" || k.decyzja == "zmieniony"));
+  if (w) { w.czeka = llm.filter(k => !k.weryfikacja).length; w.propozycje = llm.length; w.autora = autora;
+           w.dowody = kd.length; w.dowody_ok = kd.filter(k => k.weryfikacja).length; opcje(); }
+}
+
+// --- aktywna karta i panel ---
+async function aktywuj(kl, przewin) {
+  if (S.aktywna && S.aktywna != kl) await zachowajMemo();
+  document.querySelectorAll(".karta.akt, .karta.pokrywa").forEach(e => e.classList.remove("akt", "pokrywa"));
+  if (S.podsw) { const b = document.querySelector(`.tekst[data-tura="${S.podsw}"]`); if (b) b.textContent = S.d.tury.find(t => t.id == S.podsw).tekst; }
+  S.podsw = null;
+  S.aktywna = kl;
+  koniecEdycji();
+  const k = kl && znajdz(kl);
+  if (!k) { $("#dok").hidden = true; return; }
+  const c = sel(kl);
+  c?.classList.add("akt");
+  const inne = wszystkieKody().filter(x => x.tura == k.tura && (x.etap == "kontrolne") != (k.etap == "kontrolne")
+    && !(x.decyzja == "usunięty przez autora") && x.start < k.koniec && k.start < x.koniec);
+  inne.forEach(x => sel(klucz(x))?.classList.add("pokrywa"));
+  const t = S.d.tury.find(x => x.id == k.tura), b = document.querySelector(`.tekst[data-tura="${k.tura}"]`);
+  const s = k.start - t.poz, e = k.koniec - t.poz;
+  b.innerHTML = esc(t.tekst.slice(0, s)) + "<mark>" + esc(t.tekst.slice(s, e)) + "</mark>" + esc(t.tekst.slice(e));
+  S.podsw = k.tura;
+  dok(k, inne);
+  if (przewin && c) c.scrollIntoView({block: "center"});
+}
+
+function dok(k, inne) {
+  const model = k.etap == "kontrolne" ? S.d.kontrolne.model : S.d.model;
+  const kod = autorska(k) || k.decyzja == "zmieniony" ? k.kod : k.kod_llm;
+  const stan = autorska(k) ? "dodany przez autora" : (k.decyzja || "bez decyzji") + (k.zrodlo_decyzji ? ` (${k.zrodlo_decyzji})` : "")
+    + (k.weryfikacja ? ", zweryfikowany" : ", do weryfikacji");
+  $("#d-opis").innerHTML = `<span class="st">${esc(autorska(k) ? "kod autora" : model)}, ${esc(k.tura)} ${esc(k.czas)}</span> `
+    + `<b>${esc(kod)}</b> <span class="st">${esc(stan)}</span>`;
+  $("#d-pokrywa").textContent = autorska(k) ? "" : "Drugi model na tym fragmencie: "
+    + (inne.length ? inne.map(x => `${x.decyzja == "zmieniony" || autorska(x) ? x.kod : x.kod_llm} (${x.decyzja || "bez decyzji"})`).join("; ") : "brak")
+    + (k.uzasadnienie_adjudykacji ? `. Adjudykacja: ${k.uzasadnienie_adjudykacji}` : "");
+  $("#d-memo").value = k.memo_autora || "";
+  $("#dok .llm").hidden = autorska(k);
+  $("#dok .autor-tylko").hidden = !autorska(k);
+  $("#d-zapis").textContent = "";
+  $("#dok").hidden = !$("#panel").hidden;
+}
+
+function aktywnaKarta() { return S.aktywna && znajdz(S.aktywna); }
+function memoZmienione() { const k = aktywnaKarta(); return k && $("#d-memo").value.trim() != (k.memo_autora || ""); }
+
+async function zachowajMemo() {
+  if (memoZmienione()) await zapiszMemo();
+}
+
+function podmien(nowa, etap) {
+  nowa.etap = etap;
+  const lista = autorska(nowa) ? S.d.kody_autora : (etap == "kontrolne" ? S.d.kontrolne.kody : S.d.kody);
+  const i = lista.findIndex(x => x.id == nowa.id);
+  if (i >= 0) lista[i] = nowa; else lista.push(nowa);
+  const stara = sel(klucz(nowa));
+  if (nowa.decyzja == "usunięty przez autora") stara?.remove();
+  else {
+    const el = karta(nowa);
+    if (stara) stara.replaceWith(el);
+    else document.querySelector(`#t-${nowa.tura} .lewa`).append(el);
+    if (klucz(nowa) == S.aktywna) el.classList.add("akt");
+    if (nowa.kod && !document.querySelector(`#kody option[value="${CSS.escape(nowa.kod)}"]`))
+      $("#kody").insertAdjacentHTML("beforeend", `<option value="${esc(nowa.kod)}">`);
+  }
+  liczniki();
+}
+
+async function wyslij(url, body) {
+  S.zajety = true;  // klawisz wciśnięty w trakcie zapisu nie wyśle drugiej decyzji
+  try {
+    const j = await api(url, {transkrypt: S.idi, etap: S.etap, ...body});
+    podmien(j.karta, body.etap || S.etap);
+    return j.karta;
+  } finally { S.zajety = false; }
+}
+
+async function decyzja(rodzaj, extra = {}) {
+  const k = aktywnaKarta();
+  if (!k || autorska(k)) return;
+  await wyslij("/api/decyzja", {id: k.id, etap: k.etap, decyzja: rodzaj, memo: $("#d-memo").value.trim(), ...extra});
+  nastepna();
+}
+
+async function zapiszMemo() {
+  const k = aktywnaKarta();
+  if (!k) return;
+  const nowa = await wyslij("/api/memo", {id: k.id, etap: k.etap, memo: $("#d-memo").value.trim()});
+  if (klucz(nowa) == S.aktywna) { $("#d-memo").value = nowa.memo_autora || ""; $("#d-zapis").textContent = "memo zapisane"; }
+}
+
+async function usunAutorski() {
+  const k = aktywnaKarta();
+  if (!k || !autorska(k) || !confirm(`Usunąć kod „${k.kod}”? Wpis zostaje w dzienniku decyzji.`)) return;
+  await wyslij("/api/usun", {id: k.id, etap: k.etap});
+  S.aktywna = null;
+  nastepna();
+}
+
+// Pozycja liczona na wszystkich kartach: przy filtrze właśnie zweryfikowana karta znika, a kolejność ma zostać.
+function nastepna() {
+  const all = [...document.querySelectorAll(".karta")], od = all.findIndex(c => c.dataset.klucz == S.aktywna);
+  const czeka = c => c.classList.contains("czeka") && c.offsetParent !== null;
+  const c = all.slice(od + 1).find(czeka) || all.find(czeka);
+  aktywuj(c ? c.dataset.klucz : null, true);
+}
+
+function krok(o) {
+  const all = [...document.querySelectorAll(".karta")], i = all.findIndex(c => c.dataset.klucz == S.aktywna);
+  const c = (o > 0 ? all.slice(i + 1) : all.slice(0, Math.max(i, 0)).reverse()).find(c => c.offsetParent !== null);
+  if (c) aktywuj(c.dataset.klucz, true);
+}
+
+function edycja() {
+  const k = aktywnaKarta();
+  if (!k || autorska(k)) return;
+  S.edycja = true;
+  S.nowyCyt = null;
+  $("#d-edycja").hidden = false;
+  $("#d-nowykod").value = k.decyzja == "zmieniony" ? k.kod : k.kod_llm;
+  $("#d-nowycyt").textContent = "Cytat bez zmian; nowy: zaznacz fragment w tej turze.";
+  $("#d-nowykod").focus();
+  $("#d-nowykod").select();
+}
+function koniecEdycji() { S.edycja = false; S.nowyCyt = null; $("#d-edycja").hidden = true; }
+async function zapiszZmiane() {
+  const n = S.nowyCyt;
+  await decyzja("przyjęty", {kod: $("#d-nowykod").value.trim(), cytat: n ? n.cytat : "", start: n ? n.start : null});
+}
+
+const AKCJE = {p: () => decyzja("przyjęty"), o: () => decyzja("odrzucony"), z: edycja, s: zapiszMemo, u: usunAutorski,
+               j: () => krok(1), k: () => krok(-1), n: nastepna, m: () => $("#d-memo").focus()};
+document.querySelectorAll("#dok [data-a]").forEach(b => b.addEventListener("click", () => S.zajety || AKCJE[b.dataset.a]()));
+$("#d-zapisz").onclick = zapiszZmiane;
+$("#d-anuluj").onclick = koniecEdycji;
+
+// --- zaznaczenie: nowy cytat albo własny kod ---
+const blok = n => (n && (n.nodeType == 3 ? n.parentElement : n))?.closest(".tekst");
+document.addEventListener("mouseup", e => {
+  if (e.target.closest("aside, .karta")) return;
+  const sz = getSelection();
+  if (!sz.rangeCount || sz.isCollapsed) return;
+  const r = sz.getRangeAt(0), box = blok(r.startContainer);
+  if (!box || box !== blok(r.endContainer)) return;
+  const pre = document.createRange();
+  pre.selectNodeContents(box);
+  pre.setEnd(r.startContainer, r.startOffset);
+  let cyt = r.toString(), start = pre.toString().length + (cyt.length - cyt.trimStart().length);
+  cyt = cyt.trim();
+  if (!cyt) return;
+  const tura = box.dataset.tura, t = S.d.tury.find(x => x.id == tura), k = aktywnaKarta();
+  if (S.edycja && k && k.tura == tura) {
+    S.nowyCyt = {cytat: cyt, start};
+    $("#d-nowycyt").textContent = `Nowy cytat: „${cyt}”`;
+    return;
+  }
+  if (t.mowca != "R" || t.wylaczona) return;
+  S.zazn = {tura, cytat: cyt, start};
+  $("#p-cyt").innerHTML = `Nowy kod autora w ${tura} (${esc(t.start)}): „${esc(cyt)}”`;
+  $("#dok").hidden = true;
+  $("#panel").hidden = false;
+  $("#p-kod").focus();
+});
+
+async function dodaj() {
+  const kod = $("#p-kod").value.trim();
+  if (!kod || !S.zazn) return;
+  const nowa = await wyslij("/api/wlasny", {tura: S.zazn.tura, cytat: S.zazn.cytat, start: S.zazn.start, kod, memo: $("#p-memo").value.trim()});
+  zamknijPanel();
+  aktywuj(klucz(nowa));
+}
+function zamknijPanel() {
+  $("#panel").hidden = true;
+  $("#p-kod").value = $("#p-memo").value = "";
+  S.zazn = null;
+  $("#dok").hidden = !aktywnaKarta();
+}
+$("#p-dodaj").onclick = dodaj;
+$("#p-anuluj").onclick = zamknijPanel;
+
+// --- klawiatura ---
+document.addEventListener("keydown", e => {
+  if (e.key == "s" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); return S.zajety || zapiszMemo(); }
+  if (S.zajety && (e.key == "Enter" || !e.target.closest("input, textarea"))) return e.preventDefault();
+  const pole = e.target.closest("input, select, textarea");
+  if (pole) {
+    if (pole.id == "d-memo" && e.key == "Enter" && !e.shiftKey) { e.preventDefault(); return decyzja("przyjęty"); }
+    if (pole.id == "d-nowykod" && e.key == "Enter") { e.preventDefault(); return zapiszZmiane(); }
+    if (pole.closest("#panel") && e.key == "Enter") { e.preventDefault(); return dodaj(); }
+    if (e.key == "Escape") {
+      if (pole.closest("#panel")) zamknijPanel();
+      if (pole.id == "d-nowykod") koniecEdycji();
+      pole.blur();
+    }
+    return;
+  }
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  if (e.key == "Escape") { if (!$("#panel").hidden) zamknijPanel(); else koniecEdycji(); return; }
+  const a = AKCJE[e.key];
+  if (!a) return;
+  e.preventDefault();
+  const k = aktywnaKarta();
+  if ("poz".includes(e.key) && (!k || autorska(k))) return;
+  if (!k && "msu".includes(e.key)) return;
+  a();
+});
+window.addEventListener("beforeunload", e => { if (memoZmienione()) { e.preventDefault(); e.returnValue = ""; } });
+
+$("#transkrypt").onchange = async e => { await zachowajMemo(); S.idi = e.target.value; await laduj(); nastepna(); };
+$("#etap").onchange = async e => { await zachowajMemo(); S.etap = e.target.value; S.idi = null; await lista(); await laduj(); nastepna(); };
+$("#tylko").onchange = e => document.body.classList.toggle("tylko", e.target.checked);
+$("#dow").onchange = e => {
+  document.body.classList.toggle("dow", e.target.checked);
+  if (e.target.checked && !sel(S.aktywna)?.offsetParent) nastepna();  // aktywna karta mogła zniknąć z widoku
+};
+history.scrollRestoration = "manual";  // po odświeżeniu widok ma wrócić do aktywnej karty, nie do starej pozycji
+(async () => { await lista(); await laduj(); nastepna(); })();
+</script>
+</body>
+</html>

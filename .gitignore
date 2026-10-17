@@ -1,0 +1,15 @@
+# credentials
+.env
+*.env
+# interview data and coding results (published separately or not at all)
+public/*.md
+!public/README.md
+kodowanie/
+Nagrania/
+internal/
+zgody/
+metadane/
+# Python
+__pycache__/
+*.pyc
+.venv*/

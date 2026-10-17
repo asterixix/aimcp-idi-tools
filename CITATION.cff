@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below, together with the RODBUK dataset of transcripts."
+title: "AIMCP-IDI tools: transcription and LLM-assisted coding of interviews"
+version: 1.0.0
+license: MIT
+authors:
+  - family-names: Sendyka
+    given-names: Artur
+    affiliation: "Institute of Information Studies, Jagiellonian University in Kraków"
+keywords:
+  - qualitative research
+  - grounded theory
+  - large language models
+  - qualitative coding
+  - transcription
+  - academic libraries
